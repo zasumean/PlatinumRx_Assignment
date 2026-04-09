@@ -1,0 +1,147 @@
+**Schema (MySQL v8)**
+
+    CREATE TABLE clinics (
+        cid VARCHAR(50) PRIMARY KEY,
+        clinic_name VARCHAR(100),
+        city VARCHAR(50),
+        state VARCHAR(50),
+        country VARCHAR(50)
+    );
+    
+    CREATE TABLE customer (
+        uid VARCHAR(50) PRIMARY KEY,
+        name VARCHAR(100),
+        mobile VARCHAR(15)
+    );
+    
+    CREATE TABLE clinic_sales (
+        oid VARCHAR(50) PRIMARY KEY,
+        uid VARCHAR(50),
+        cid VARCHAR(50),
+        amount DECIMAL(10,2),
+        datetime DATETIME,
+        sales_channel VARCHAR(50)
+    );
+    
+    CREATE TABLE expenses (
+        eid VARCHAR(50) PRIMARY KEY,
+        cid VARCHAR(50),
+        description VARCHAR(100),
+        amount DECIMAL(10,2),
+        datetime DATETIME
+    );
+    INSERT INTO clinics VALUES 
+    ('c1', 'Clinic A', 'Pune', 'MH', 'India'),
+    ('c2', 'Clinic B', 'Mumbai', 'MH', 'India'), 
+    ('c3', 'Clinic C', 'Delhi', 'DL', 'India'); 
+    
+    INSERT INTO customer VALUES 
+    ('u1', 'User 1', '9700000001'), 
+    ('u2', 'User 2', '9700000002'), 
+    ('u3', 'User 3', '9700000003');
+    
+    
+    
+    INSERT INTO clinic_sales VALUES
+    ('o1', 'u1', 'c1', 5000, '2021-10-05 10:00:00', 'online'),
+    ('o2', 'u2', 'c1', 7000, '2021-10-10 12:00:00', 'offline'),
+    ('o3', 'u3', 'c2', 10000, '2021-11-01 09:00:00', 'online'),
+    ('o4', 'u1', 'c3', 8000, '2021-11-05 11:00:00', 'offline'),
+    ('o5', 'u2', 'c2', 6000, '2021-10-15 14:00:00', 'online');
+    
+    INSERT INTO expenses VALUES
+    ('e1', 'c1', 'supplies', 2000, '2021-10-05 10:00:00'),
+    ('e2', 'c2', 'rent', 3000, '2021-10-10 12:00:00'),
+    ('e3', 'c3', 'staff', 4000, '2021-11-01 09:00:00'),
+    ('e4', 'c1', 'electricity', 1000, '2021-11-05 11:00:00');
+
+---
+
+**Query #1**
+
+    SELECT sales_channel, SUM(amount) AS revenue
+    FROM clinic_sales
+    WHERE datetime LIKE '2021%'
+    GROUP BY sales_channel;
+
+| sales_channel | revenue |
+| ------------- | ------- |
+| online        | 21000.0 |
+| offline       | 15000.0 |
+
+---
+**Query #2**
+
+    -- 2nd
+    SELECT uid, SUM(amount) AS total_spent
+    FROM clinic_sales
+    WHERE datetime LIKE '2021%'
+    GROUP BY uid
+    ORDER BY total_spent DESC
+    LIMIT 10;
+
+| uid | total_spent |
+| --- | ----------- |
+| u1  | 13000.0     |
+| u2  | 13000.0     |
+| u3  | 10000.0     |
+
+---
+**Query #3**
+
+    -- 3rd
+    SELECT 
+        DATE_FORMAT(s.datetime, '%Y-%m') AS month,
+        SUM(s.amount) AS revenue,
+        SUM(e.amount) AS expense,
+        SUM(s.amount) - SUM(e.amount) AS profit
+    FROM clinic_sales s
+    LEFT JOIN expenses e 
+        ON DATE_FORMAT(s.datetime, '%Y-%m') = DATE_FORMAT(e.datetime, '%Y-%m')
+    GROUP BY DATE_FORMAT(s.datetime, '%Y-%m');
+
+| month   | revenue | expense | profit  |
+| ------- | ------- | ------- | ------- |
+| 2021-10 | 36000.0 | 15000.0 | 21000.0 |
+| 2021-11 | 36000.0 | 10000.0 | 26000.0 |
+
+---
+**Query #4**
+
+    -- 4th 
+    SELECT 
+        c.city, 
+        c.clinic_name, 
+        SUM(s.amount) AS revenue
+    FROM clinic_sales s
+    JOIN clinics c ON s.cid = c.cid
+    GROUP BY c.city, c.clinic_name
+    ORDER BY c.city, revenue DESC;
+
+| city   | clinic_name | revenue |
+| ------ | ----------- | ------- |
+| Delhi  | Clinic C    | 8000.0  |
+| Mumbai | Clinic B    | 16000.0 |
+| Pune   | Clinic A    | 12000.0 |
+
+---
+**Query #5**
+
+    -- 5th
+    SELECT 
+        c.state, 
+        c.clinic_name, 
+        SUM(s.amount) AS revenue
+    FROM clinic_sales s
+    JOIN clinics c ON s.cid = c.cid
+    GROUP BY c.state, c.clinic_name
+    ORDER BY c.state, revenue ASC;
+
+| state | clinic_name | revenue |
+| ----- | ----------- | ------- |
+| DL    | Clinic C    | 8000.0  |
+| MH    | Clinic A    | 12000.0 |
+| MH    | Clinic B    | 16000.0 |
+
+---
+

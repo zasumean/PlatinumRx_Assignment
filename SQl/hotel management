@@ -1,0 +1,222 @@
+**Schema (MySQL v8)**
+
+    
+    CREATE TABLE users (
+        user_id VARCHAR(50) PRIMARY KEY,
+        name VARCHAR(100),
+        phone_number VARCHAR(15),
+        mail_id VARCHAR(100),
+        billing_address TEXT
+    );
+    
+    
+    CREATE TABLE bookings (
+        booking_id VARCHAR(50) PRIMARY KEY,
+        booking_date TIMESTAMP,
+        room_no VARCHAR(50),
+        user_id VARCHAR(50),
+        FOREIGN KEY (user_id) REFERENCES users(user_id)
+    );
+    
+    CREATE TABLE items (
+        item_id VARCHAR(50) PRIMARY KEY,
+        item_name VARCHAR(100),
+        item_rate DECIMAL(10,2)
+    );
+    
+    CREATE TABLE booking_commercials (
+        id VARCHAR(50) PRIMARY KEY,
+        booking_id VARCHAR(50),
+        bill_id VARCHAR(50),
+        bill_date TIMESTAMP,
+        item_id VARCHAR(50),
+        item_quantity DECIMAL(10,2),
+        FOREIGN KEY (booking_id) REFERENCES bookings(booking_id),
+        FOREIGN KEY (item_id) REFERENCES items(item_id)
+    );
+    
+    
+    
+    INSERT INTO users (user_id, name, phone_number, mail_id, billing_address) VALUES
+    ('u1', 'User 1', '9700000001', 'user1@example.com', 'Street A'),
+    ('u2', 'User 2', '9700000002', 'user2@example.com', 'Street B'),
+    ('u3', 'User 3', '9700000003', 'user3@example.com', 'Street C'),
+    ('u4', 'User 4', '9700000004', 'user4@example.com', 'Street D'),
+    ('u5', 'User 5', '9700000005', 'user5@example.com', 'Street E'),
+    ('u6', 'User 6', '9700000006', 'user6@example.com', 'Street F'),
+    ('u7', 'User 7', '9700000007', 'user7@example.com', 'Street G'),
+    ('u8', 'User 8', '9700000008', 'user8@example.com', 'Street H');
+    
+    INSERT INTO items (item_id, item_name, item_rate) VALUES
+    ('i1', 'Tawa Paratha', 18),
+    ('i2', 'Mix Veg', 89),
+    ('i3', 'Paneer Butter Masala', 250),
+    ('i4', 'Dal Fry', 120),
+    ('i5', 'Rice', 60);
+    
+    INSERT INTO bookings (booking_id, booking_date, room_no, user_id) VALUES
+    ('b1', '2021-10-05 10:00:00', 'r101', 'u1'),
+    ('b2', '2021-10-10 12:00:00', 'r102', 'u2'),
+    ('b3', '2021-10-15 14:00:00', 'r103', 'u3'),
+    ('b4', '2021-10-20 16:00:00', 'r104', 'u4'),
+    ('b5', '2021-11-01 09:00:00', 'r105', 'u5'),
+    ('b6', '2021-11-05 11:00:00', 'r106', 'u6'),
+    ('b7', '2021-11-10 13:00:00', 'r107', 'u7'),
+    ('b8', '2021-11-15 15:00:00', 'r108', 'u8'),
+    ('b9', '2021-11-20 17:00:00', 'r109', 'u1');  
+    
+    INSERT INTO booking_commercials (id, booking_id, bill_id, bill_date, item_id, item_quantity) VALUES
+    
+    -- October bills
+    ('c1', 'b1', 'bill1', '2021-10-05', 'i1', 5),
+    ('c2', 'b1', 'bill1', '2021-10-05', 'i3', 2),
+    
+    ('c3', 'b2', 'bill2', '2021-10-10', 'i2', 3),
+    ('c4', 'b2', 'bill2', '2021-10-10', 'i3', 3),
+    
+    ('c5', 'b3', 'bill3', '2021-10-15', 'i4', 4),
+    ('c6', 'b3', 'bill3', '2021-10-15', 'i5', 10),
+    
+    ('c7', 'b4', 'bill4', '2021-10-20', 'i3', 5),
+    ('c8', 'b4', 'bill4', '2021-10-20', 'i2', 2),
+    
+    -- November bills
+    ('c9', 'b5', 'bill5', '2021-11-01', 'i1', 10),
+    ('c10', 'b5', 'bill5', '2021-11-01', 'i3', 1),
+    
+    ('c11', 'b6', 'bill6', '2021-11-05', 'i2', 5),
+    ('c12', 'b6', 'bill6', '2021-11-05', 'i4', 3),
+    
+    ('c13', 'b7', 'bill7', '2021-11-10', 'i5', 20),
+    ('c14', 'b7', 'bill7', '2021-11-10', 'i3', 2),
+    
+    ('c15', 'b8', 'bill8', '2021-11-15', 'i3', 4),
+    ('c16', 'b8', 'bill8', '2021-11-15', 'i1', 6),
+    
+    ('c17', 'b9', 'bill9', '2021-11-20', 'i2', 7),
+    ('c18', 'b9', 'bill9', '2021-11-20', 'i3', 3);
+
+---
+
+**Query #1**
+
+    -- 1st
+    SELECT u.user_id, b.room_no
+    FROM users u
+    JOIN bookings b 
+        ON u.user_id = b.user_id
+    WHERE b.booking_date = (
+        SELECT MAX(b2.booking_date)
+        FROM bookings b2
+        WHERE b2.user_id = u.user_id
+    );
+
+| user_id | room_no |
+| ------- | ------- |
+| u2      | r102    |
+| u3      | r103    |
+| u4      | r104    |
+| u5      | r105    |
+| u6      | r106    |
+| u7      | r107    |
+| u8      | r108    |
+| u1      | r109    |
+
+---
+**Query #2**
+
+    -- 2nd
+    SELECT 
+        b.booking_id,
+        SUM(i.item_rate * bc.item_quantity) AS total_bill
+    FROM bookings b
+    JOIN booking_commercials bc 
+        ON b.booking_id = bc.booking_id
+    JOIN items i 
+        ON bc.item_id = i.item_id
+    WHERE b.booking_date LIKE '2021-11%'
+    GROUP BY b.booking_id;
+
+| booking_id | total_bill |
+| ---------- | ---------- |
+| b5         | 430.0      |
+| b6         | 805.0      |
+| b7         | 1700.0     |
+| b8         | 1108.0     |
+| b9         | 1373.0     |
+
+---
+**Query #3**
+
+    -- 3rd
+    
+    SELECT 
+        bc.bill_id,
+        SUM(i.item_rate * bc.item_quantity) AS bill_amount
+    FROM booking_commercials bc
+    JOIN items i 
+        ON bc.item_id = i.item_id
+    WHERE bc.bill_date LIKE '2021-10%'
+    GROUP BY bc.bill_id
+    HAVING bill_amount > 1000;
+
+| bill_id | bill_amount |
+| ------- | ----------- |
+| bill2   | 1017.0      |
+| bill3   | 1080.0      |
+| bill4   | 1428.0      |
+
+---
+**Query #4**
+
+    -- 4th
+    
+    SELECT 
+        SUBSTR(bc.bill_date, 1, 7) AS month,
+        bc.item_id,
+        SUM(bc.item_quantity) AS total_qty
+    FROM booking_commercials bc
+    GROUP BY month, bc.item_id
+    ORDER BY month, total_qty DESC;
+
+| month   | item_id | total_qty |
+| ------- | ------- | --------- |
+| 2021-10 | i3      | 10.0      |
+| 2021-10 | i5      | 10.0      |
+| 2021-10 | i1      | 5.0       |
+| 2021-10 | i2      | 5.0       |
+| 2021-10 | i4      | 4.0       |
+| 2021-11 | i5      | 20.0      |
+| 2021-11 | i1      | 16.0      |
+| 2021-11 | i2      | 12.0      |
+| 2021-11 | i3      | 10.0      |
+| 2021-11 | i4      | 3.0       |
+
+---
+**Query #5**
+
+    -- 5th
+    SELECT 
+        SUBSTR(bc.bill_date, 1, 7) AS month,
+        bc.bill_id,
+        SUM(i.item_rate * bc.item_quantity) AS bill_amount
+    FROM booking_commercials bc
+    JOIN items i 
+        ON bc.item_id = i.item_id
+    GROUP BY month, bc.bill_id
+    ORDER BY month, bill_amount DESC;
+
+| month   | bill_id | bill_amount |
+| ------- | ------- | ----------- |
+| 2021-10 | bill4   | 1428.0      |
+| 2021-10 | bill3   | 1080.0      |
+| 2021-10 | bill2   | 1017.0      |
+| 2021-10 | bill1   | 590.0       |
+| 2021-11 | bill7   | 1700.0      |
+| 2021-11 | bill9   | 1373.0      |
+| 2021-11 | bill8   | 1108.0      |
+| 2021-11 | bill6   | 805.0       |
+| 2021-11 | bill5   | 430.0       |
+
+---
+
